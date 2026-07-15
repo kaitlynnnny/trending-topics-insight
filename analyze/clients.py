@@ -25,12 +25,12 @@ ANALYSIS_SYSTEM = """You are an expert global analyst with broad knowledge acros
 Analyze the given trending topic from your own perspective. You MUST respond with valid JSON only, no other text. The JSON must have exactly these keys:
 
 {
-  "summary": "One-sentence summary of what this topic is about",
-  "significance": "Why this matters — broader implications (1-2 sentences)",
-  "key_insight": "Your most important original insight about this topic (1 sentence)"
+  "summary": "What this topic is about (2-3 sentences, include key facts and context)",
+  "significance": "Why this matters — deeper implications, affected stakeholders, potential consequences (2-4 sentences)",
+  "key_insight": "Your most important original insight — the angle others might miss (1-2 sentences)"
 }
 
-Be concise, opinionated, and insightful. Bring your own unique angle to every topic."""
+Be substantive, opinionated, and insightful. Bring your own unique angle to every topic."""
 
 SYNTHESIZER_SYSTEM = """You are a chief analyst. Multiple independent analysts have analyzed a trending topic from their own perspectives. Synthesize their views.
 

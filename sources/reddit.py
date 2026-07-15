@@ -8,6 +8,7 @@ import aiohttp
 import feedparser
 
 SUBREDDITS = ["all", "worldnews", "technology", "science", "news"]
+ALL_LIMIT = "?limit=50"  # r/all gets 50, others get 25
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
@@ -15,7 +16,8 @@ HEADERS = {
 
 
 async def _fetch_rss(session, subreddit):
-    url = f"https://www.reddit.com/r/{subreddit}/.rss?limit=25"
+    limit = 50 if subreddit == "all" else 25
+    url = f"https://www.reddit.com/r/{subreddit}/.rss?limit={limit}"
     try:
         async with session.get(url, headers=HEADERS, timeout=15) as resp:
             print(f"  [Reddit {resp.status}] r/{subreddit}")
@@ -53,10 +55,10 @@ async def fetch_hot_posts(subreddits=None):
         async with aiohttp.ClientSession(cookie_jar=jar) as session:
             for i, sub in enumerate(subreddits):
                 if i > 0:
-                    await asyncio.sleep(5)  # avoid 429 rate limit
+                    await asyncio.sleep(10)  # avoid 429 rate limit
                 posts = await _fetch_rss(session, sub)
                 if not posts:
-                    await asyncio.sleep(3)
+                    await asyncio.sleep(5)
                     posts = await _fetch_rss(session, sub)  # retry once
                 all_posts.extend(posts)
     except Exception:
