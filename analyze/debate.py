@@ -3,13 +3,11 @@ if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 """
-Multi-LLM debate engine v4 — Role-based blind analysis + Synthesizer.
+Multi-LLM debate engine v5 — Independent analysis + Synthesizer.
 
-  Stage 1: Each model analyzes independently with a fixed persona
-           (DeepSeek=Optimist, Qwen=Risk, Gemini=Macro)
-           All see the same verified news + source metadata.
-  Stage 2: A Synthesizer merges the 3 independent reports.
-           No cross-review — no model sees another's output.
+  Stage 1: Each model analyzes independently with the same analyst prompt.
+           All models bring their own unique perspective naturally.
+  Stage 2: A Synthesizer merges the independent reports.
 """
 
 import asyncio
@@ -17,9 +15,7 @@ from dataclasses import dataclass, field
 
 from analyze.clients import (
     LLMClients,
-    DEEPSEEK_PERSONA,
-    QWEN_PERSONA,
-    GEMINI_PERSONA,
+    ANALYSIS_SYSTEM,
     SYNTHESIZER_SYSTEM,
 )
 
@@ -124,13 +120,7 @@ def _build_synthesis_prompt(topic: dict, analyses: dict) -> str:
 
 
 # ── Model → persona mapping ──
-PERSONAS = {
-    "DeepSeek": DEEPSEEK_PERSONA,
-    "Qwen": QWEN_PERSONA,
-    "Gemini": GEMINI_PERSONA,
-}
-# Fallback: other models get generic analyst persona
-FALLBACK_PERSONA = "You are an expert global affairs analyst. Analyze what this verified news event means and its broader implications."
+# All models use the same generic analyst prompt
 
 
 async def analyze_topic(clients: LLMClients, topic: dict) -> TopicInsight:
@@ -144,12 +134,11 @@ async def analyze_topic(clients: LLMClients, topic: dict) -> TopicInsight:
 
     # ── Stage 1: Parallel independent analysis with fixed personas ──
     tasks = [
-        clients.ask_deepseek(DEEPSEEK_PERSONA, prompt),
-        clients.ask_qwen(QWEN_PERSONA, prompt),
-        clients.ask_gemini(GEMINI_PERSONA, prompt),
-        # Claude/GPT as extras if available
-        clients.ask_claude(FALLBACK_PERSONA, prompt),
-        clients.ask_gpt(FALLBACK_PERSONA, prompt),
+        clients.ask_deepseek(ANALYSIS_SYSTEM, prompt),
+        clients.ask_qwen(ANALYSIS_SYSTEM, prompt),
+        clients.ask_gemini(ANALYSIS_SYSTEM, prompt),
+        clients.ask_claude(ANALYSIS_SYSTEM, prompt),
+        clients.ask_gpt(ANALYSIS_SYSTEM, prompt),
     ]
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -160,9 +149,9 @@ async def analyze_topic(clients: LLMClients, topic: dict) -> TopicInsight:
     insight.gpt_analysis = results[4] if not isinstance(results[4], Exception) else None
 
     analyses = {
-        "DeepSeek (Optimist/Growth)": insight.deepseek_analysis,
-        "Qwen (Risk/Compliance)": insight.qwen_analysis,
-        "Gemini (Macro/Structural)": insight.gemini_analysis,
+        "DeepSeek": insight.deepseek_analysis,
+        "Qwen": insight.qwen_analysis,
+        "Gemini": insight.gemini_analysis,
     }
 
     if not any(analyses.values()):

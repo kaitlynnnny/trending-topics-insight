@@ -53,7 +53,7 @@ async def fetch_hot_posts(subreddits=None):
         async with aiohttp.ClientSession(cookie_jar=jar) as session:
             for i, sub in enumerate(subreddits):
                 if i > 0:
-                    await asyncio.sleep(2)  # avoid 429 rate limit
+                    await asyncio.sleep(5)  # avoid 429 rate limit
                 posts = await _fetch_rss(session, sub)
                 if not posts:
                     await asyncio.sleep(3)

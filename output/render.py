@@ -185,9 +185,9 @@ def _excel_json(insights: list, raw_items: list[dict]) -> str:
                 "key_tension": ins.key_tension,
                 "bottom_line": ins.bottom_line,
                 "justifications": {
-                    "DeepSeek (Growth Optimist)": ins.deepseek_justification or "",
-                    "Qwen (Risk & Compliance)": ins.qwen_justification or "",
-                    "Gemini (Macro Strategist)": ins.gemini_justification or "",
+                    "DeepSeek": ins.deepseek_justification or "",
+                    "Qwen": ins.qwen_justification or "",
+                    "Gemini": ins.gemini_justification or "",
                 },
             }
             for ins in insights
@@ -245,18 +245,18 @@ def render_report(insights: list, raw_items: list[dict] | None = None, output_pa
         agree_class = ins.agreement_level or "unknown"
         agree_label = {"high": "HIGH AGREEMENT", "partial": "PARTIAL AGREEMENT", "low": "LOW AGREEMENT"}.get(agree_class, "UNKNOWN")
 
-        # Justifications (now per-role from the Synthesizer)
+        # Justifications
         role_map = {
-            "DeepSeek": ("Growth Optimist", ins.deepseek_justification),
-            "Qwen": ("Risk & Compliance", ins.qwen_justification),
-            "Gemini": ("Macro Strategist", ins.gemini_justification),
-            "Claude": ("General Analyst", ""),
-            "GPT": ("General Analyst", ""),
+            "DeepSeek": ins.deepseek_justification,
+            "Qwen": ins.qwen_justification,
+            "Gemini": ins.gemini_justification,
+            "Claude": "",
+            "GPT": "",
         }
         just_items = ""
         for model_name in ins.active_models:
             css = MODEL_CSS.get(model_name, "")
-            role_label, justification = role_map.get(model_name, ("Analyst", ""))
+            justification = role_map.get(model_name, "")
             # Fallback: use model's analysis
             if not justification:
                 analysis = ins.get_analysis(model_name)
@@ -264,7 +264,7 @@ def render_report(insights: list, raw_items: list[dict] | None = None, output_pa
                     justification = analysis.get("key_insight", "") or analysis.get("summary", "")
             if justification:
                 just_items += f"""<div class="just-item {css}">
-  <div class="just-model">{model_name} — {role_label}</div>
+  <div class="just-model">{model_name}</div>
   <div>{justification}</div>
 </div>"""
 
