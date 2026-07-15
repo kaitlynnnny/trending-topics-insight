@@ -8,8 +8,8 @@ import aiohttp
 HN_API = "https://hn.algolia.com/api/v1/search"
 
 
-async def fetch_top_stories(min_points=100, window_hours=24, limit=30):
-    """Fetch top HN stories."""
+async def fetch_top_stories(min_points=50, window_hours=24, limit=30):
+    """Fetch top HN stories, sorted by points (hotness)."""
     import time
     now = int(time.time())
     from_ts = now - window_hours * 3600
@@ -19,6 +19,7 @@ async def fetch_top_stories(min_points=100, window_hours=24, limit=30):
         "numericFilters": f"created_at_i>{from_ts},points>={min_points}",
         "hitsPerPage": limit,
     }
+    # Algolia 'search' endpoint sorts by points by default
 
     async with aiohttp.ClientSession() as session:
         try:
