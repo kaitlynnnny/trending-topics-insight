@@ -29,7 +29,7 @@ async def _fetch_nitter(session, url, source_name):
 
     feed = feedparser.parse(xml)
     posts = []
-    for entry in feed.entries[:30]:
+    for entry in feed.entries[:50]:
         title = entry.get("title", "")
         if not title:
             continue

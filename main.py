@@ -94,10 +94,12 @@ def cluster_topics(items, threshold=0.7):
             elif "twitter" in sl or "nitter" in sl: source_types.add("twitter")
             elif "trends" in sl or "google" in sl: source_types.add("trends")
 
-        # Diversity-weighted heat: source variety matters more than raw score
-        diversity_bonus = len(source_types) * 2  # 2 sources = 4x, 3 sources = 6x, etc.
+        # Diversity-weighted heat: Twitter gives bonus but doesn't count as primary source
+        debate_types = source_types - {"twitter"}  # twitter is a booster, not a topic source
+        twitter_boost = 1.5 if "twitter" in source_types else 1.0
+        diversity_bonus = len(debate_types) * 3  # 2 sources = 6x, 3 sources = 9x
         cluster_size = len(c)
-        heat = cluster_size * (1 + diversity_bonus) * 10
+        heat = cluster_size * (1 + diversity_bonus) * 10 * twitter_boost
 
         topics.append({
             "title": best["title"], "url": best.get("url", ""),
@@ -153,7 +155,7 @@ def _mock_analyze(topics):
 
 async def main():
     parser = argparse.ArgumentParser(description="Trending Topics Insight")
-    parser.add_argument("--topics", type=int, default=10)
+    parser.add_argument("--topics", type=int, default=20)
     parser.add_argument("--concurrent", type=int, default=2)
     parser.add_argument("--mock", action="store_true")
     args = parser.parse_args()
@@ -201,14 +203,13 @@ async def main():
             rejected.append(t)
             print(f"    [--] {t['title'][:70]} ({ev})")
 
-    # Ensure source diversity: pick top from each source type, then fill rest by score
-    source_slots = {"hn": 0, "reddit": 0, "twitter": 0, "trends": 0}
+    # Guarantee source diversity: HN ≥ 5, Reddit ≥ 5, Trends ≥ 5 (twitter excluded from debate)
+    source_slots = {"hn": 0, "reddit": 0, "trends": 0}
     diverse = []
     rest = []
     for t in verified:
         types = t.get("source_types", "")
-        # Try to get at least 2 from each major source type
-        for st, cap in [("hn", 3), ("reddit", 2), ("twitter", 2), ("trends", 2)]:
+        for st, cap in [("hn", 5), ("reddit", 5), ("trends", 5)]:
             if st in types and source_slots.get(st, 0) < cap:
                 source_slots[st] = source_slots.get(st, 0) + 1
                 diverse.append(t)
