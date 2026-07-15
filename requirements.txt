@@ -1,0 +1,10 @@
+anthropic
+openai
+google-genai
+sentence-transformers
+scikit-learn
+pytrends
+aiohttp
+feedparser
+ddgs
+python-dotenv
