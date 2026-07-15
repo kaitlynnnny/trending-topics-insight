@@ -61,11 +61,11 @@ TIER2_DOMAINS = [
 
 
 def cluster_topics(items, threshold=0.7):
-    """Group similar topics using sentence-transformers embeddings."""
+    """Group similar topics, with source-fair scoring."""
     if not items:
         return []
     model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
-    texts = [f"{item['title']}. Score: {item.get('score',0)}" for item in items]
+    texts = [f"{item['title']}" for item in items]
     embeddings = model.encode(texts, show_progress_bar=False)
     sim = cosine_similarity(embeddings)
 
@@ -82,18 +82,28 @@ def cluster_topics(items, threshold=0.7):
     topics = []
     for c in clusters:
         best = items[c[0]]
-        sources = Counter()
         names = set()
+        source_types = set()
         for idx in c:
             src = items[idx].get("source_name", items[idx].get("source", "?"))
-            sources[src] += 1
             names.add(src)
-        heat = len(c) * (1 + len(names) * 0.5) * int(sum(items[idx].get("score", 0) for idx in c) / max(len(c), 1))
+            # Track source categories
+            sl = src.lower()
+            if "reddit" in sl: source_types.add("reddit")
+            elif "hacker" in sl or "hn" in sl: source_types.add("hn")
+            elif "twitter" in sl or "nitter" in sl: source_types.add("twitter")
+            elif "trends" in sl or "google" in sl: source_types.add("trends")
+
+        # Diversity-weighted heat: source variety matters more than raw score
+        diversity_bonus = len(source_types) * 2  # 2 sources = 4x, 3 sources = 6x, etc.
+        cluster_size = len(c)
+        heat = cluster_size * (1 + diversity_bonus) * 10
 
         topics.append({
             "title": best["title"], "url": best.get("url", ""),
             "source": "+".join(sorted(names)[:4]),
-            "score": int(heat), "num_comments": len(c),
+            "source_types": "+".join(sorted(source_types)),
+            "score": int(heat), "num_comments": cluster_size,
             "related_queries": "",
         })
     topics.sort(key=lambda t: t["score"], reverse=True)
@@ -191,7 +201,24 @@ async def main():
             rejected.append(t)
             print(f"    [--] {t['title'][:70]} ({ev})")
 
-    debate_topics = verified[:args.topics]
+    # Ensure source diversity: pick top from each source type, then fill rest by score
+    source_slots = {"hn": 0, "reddit": 0, "twitter": 0, "trends": 0}
+    diverse = []
+    rest = []
+    for t in verified:
+        types = t.get("source_types", "")
+        # Try to get at least 2 from each major source type
+        for st, cap in [("hn", 3), ("reddit", 2), ("twitter", 2), ("trends", 2)]:
+            if st in types and source_slots.get(st, 0) < cap:
+                source_slots[st] = source_slots.get(st, 0) + 1
+                diverse.append(t)
+                break
+        else:
+            rest.append(t)
+
+    debate_topics = (diverse + rest)[:args.topics]
+    # Re-sort by score
+    debate_topics.sort(key=lambda t: t["score"], reverse=True)
     print(f"\n  {len(debate_topics)} topics entering debate, {len(rejected)} rejected")
 
     for i, t in enumerate(debate_topics, 1):
