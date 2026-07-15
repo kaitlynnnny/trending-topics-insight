@@ -1,32 +1,40 @@
 """
-Google Trends — daily trending searches.
-Captures what the world is searching for.
+Google Trends — daily trending searches via official RSS feed.
+No API key needed.
 """
 
-from pytrends.request import TrendReq
+import feedparser
+
+TREND_REGIONS = [
+    ("US", "United States"),
+    ("GB", "United Kingdom"),
+    ("JP", "Japan"),
+    ("KR", "South Korea"),
+    ("IN", "India"),
+    ("DE", "Germany"),
+    ("FR", "France"),
+    ("BR", "Brazil"),
+]
+
+RSS_URL = "https://trends.google.com/trending/rss?geo={geo}"
 
 
 def fetch_trending():
     topics = []
-    try:
-        pytrends = TrendReq(hl="en-US", tz=360, timeout=10)
-    except Exception:
-        return topics
-
-    regions = ["united_states", "united_kingdom", "japan", "south_korea",
-               "india", "germany", "france", "brazil"]
-    for region in regions:
+    for geo, name in TREND_REGIONS:
+        url = RSS_URL.format(geo=geo)
         try:
-            daily = pytrends.trending_searches(pn=region)
-            if daily is not None and not daily.empty:
-                for _, row in daily.head(10).iterrows():
+            feed = feedparser.parse(url)
+            for entry in feed.entries[:10]:
+                title = entry.get("title", "")
+                if title:
                     topics.append({
-                        "title": str(row.iloc[0]),
-                        "url": "",
+                        "title": title,
+                        "url": entry.get("ht:news_item_url", ""),
                         "score": 35,
                         "num_comments": 0,
                         "source": "google_trends",
-                        "source_name": f"Google Trends ({region.replace('_', ' ').title()})",
+                        "source_name": f"Google Trends ({name})",
                     })
         except Exception:
             continue

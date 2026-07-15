@@ -29,9 +29,11 @@ async def _fetch_subreddit(session, subreddit, base_url):
     try:
         async with session.get(url, headers=_get_headers(), timeout=15) as resp:
             if resp.status != 200:
+                print(f"  [Reddit {resp.status}] {subreddit}")
                 return []
             data = await resp.json(content_type=None)
-    except Exception:
+    except Exception as e:
+        print(f"  [Reddit error] {subreddit}: {e}")
         return []
 
     posts = []

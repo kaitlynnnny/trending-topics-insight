@@ -1,13 +1,11 @@
 """
 Twitter/X trending — via Nitter RSS (free, no API key).
-Captures what's being discussed on Twitter in real-time.
 """
 
 import feedparser
 import aiohttp
 import asyncio
 
-# Twitter accounts that break/discuss trending topics
 NITTER_ACCOUNTS = [
     ("https://nitter.net/BBCBreaking/rss", "Twitter @BBCBreaking"),
     ("https://nitter.net/Reuters/rss", "Twitter @Reuters"),
@@ -18,12 +16,15 @@ NITTER_ACCOUNTS = [
 
 
 async def _fetch_nitter(session, url, source_name):
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
     try:
-        async with session.get(url, timeout=15) as resp:
+        async with session.get(url, headers=headers, timeout=15) as resp:
+            print(f"  [Nitter {resp.status}] {source_name}")
             if resp.status != 200:
                 return []
             xml = await resp.text()
-    except Exception:
+    except Exception as e:
+        print(f"  [Nitter error] {source_name}: {e}")
         return []
 
     feed = feedparser.parse(xml)
