@@ -9,8 +9,8 @@ import os
 from typing import Optional
 
 SUBREDDITS = ["all", "worldnews", "technology", "science", "news"]
-REDDIT_BASE = "https://www.reddit.com"
-OLD_REDDIT = "https://old.reddit.com"
+REDDIT_BASE = "https://api.reddit.com"
+OLD_REDDIT = "https://api.reddit.com"
 LIMIT_PER_SUB = 25
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
@@ -59,18 +59,15 @@ async def fetch_hot_posts(subreddits=None):
         subreddits = SUBREDDITS
 
     all_posts = []
-    for base in (REDDIT_BASE, OLD_REDDIT):
-        if all_posts:
-            break
-        try:
-            async with aiohttp.ClientSession() as session:
-                tasks = [_fetch_subreddit(session, sub, base) for sub in subreddits]
-                results = await asyncio.gather(*tasks, return_exceptions=True)
-            for result in results:
-                if isinstance(result, list):
-                    all_posts.extend(result)
-        except Exception:
-            continue
+    try:
+        async with aiohttp.ClientSession() as session:
+            tasks = [_fetch_subreddit(session, sub, REDDIT_BASE) for sub in subreddits]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+        for result in results:
+            if isinstance(result, list):
+                all_posts.extend(result)
+    except Exception:
+        pass
 
     # Dedup + sort by hotness
     all_posts.sort(key=lambda p: p["score"], reverse=True)
