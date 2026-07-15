@@ -101,13 +101,34 @@ def cluster_topics(items, threshold=0.7):
 
 
 def verify_topic(topic):
-    """Check if credible news domains appear in search results."""
+    """
+    Source-aware verification.
+    - HN, Reddit, Google Trends: the fact they're trending IS the verification.
+    - Twitter (Nitter): needs news-domain cross-check.
+    - Mixed clusters: use news-domain check.
+    """
+    sources = topic.get("source", "")
+    sources_lower = sources.lower()
+    cluster_size = topic.get("num_comments", 1)
+
+    # Community-driven sources: auto-verified (votes/search volume = proof)
+    is_community = any(s in sources_lower for s in
+                       ["reddit", "hackernews", "hacker news", "hn:",
+                        "google_trends", "google trends"])
+    is_news = any(s in sources_lower for s in ["twitter", "bbc", "reuters", "ap", "bloomberg"])
+
+    # Pure community trend: pass through (with minimum cluster check)
+    if is_community and not is_news:
+        if cluster_size >= 1:
+            return True, f"Community trend ({sources[:60]})"
+        return False, "Low-confidence community topic"
+
+    # Contains news sources: do news-domain verification
     import re
     keywords = ' '.join([w for w in re.sub(r'[^\w\s]', ' ', topic["title"]).split()
                          if len(w) > 3 and w.lower() not in
                          ('this','that','with','from','they','their','have','been','were','after','over')][:8])
     results = search_web(f'{keywords}', max_results=8)
-    cluster_size = topic.get("num_comments", 1)
 
     if results.startswith("[Web") or results.startswith("[No"):
         return True, "[Search unavailable]"
@@ -115,12 +136,10 @@ def verify_topic(topic):
     rl = results.lower()
     t1 = [d for d in TIER1_DOMAINS if d in rl]
     t2 = [d for d in TIER2_DOMAINS if d in rl]
-    score = len(t1) * 3 + len(t2) + min(cluster_size - 1, 3)
 
     if len(t1) >= 1: return True, f"Tier-1: {', '.join(t1[:4])}"
     if len(t2) >= 2: return True, f"Tier-2: {', '.join(t2[:4])}"
     if cluster_size >= 3: return True, f"Cluster confidence ({cluster_size} sources)"
-    if score >= 2: return True, f"Score={score}"
     return False, f"t1={len(t1)} t2={len(t2)} cluster={cluster_size}"
 
 
@@ -185,7 +204,9 @@ async def main():
     # ── 2. Cluster ──
     print(f"\n[2/4] Clustering...")
     topics = cluster_topics(all_items)
-    print(f"  {len(topics)} unique topic clusters")
+    # Filter trivial topics (very short, generic terms)
+    topics = [t for t in topics if len(t["title"]) > 15 and len(t["title"].split()) >= 3]
+    print(f"  {len(topics)} topics after filtering trivial ones")
 
     candidates = topics[:args.topics * 2]
     print(f"\n  Verifying top {len(candidates)}...")
