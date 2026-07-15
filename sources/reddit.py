@@ -20,8 +20,11 @@ USER_AGENTS = [
 
 def _get_headers():
     import random
-    return {"User-Agent": random.choice(USER_AGENTS),
-            "Accept": "application/json"}
+    return {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        "Accept": "application/json",
+        "Accept-Language": "en-US,en;q=0.9",
+    }
 
 
 async def _fetch_subreddit(session, subreddit, base_url):
@@ -61,11 +64,11 @@ async def fetch_hot_posts(subreddits=None):
     all_posts = []
     try:
         async with aiohttp.ClientSession() as session:
-            tasks = [_fetch_subreddit(session, sub, REDDIT_BASE) for sub in subreddits]
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-        for result in results:
-            if isinstance(result, list):
-                all_posts.extend(result)
+            for i, sub in enumerate(subreddits):
+                if i > 0:
+                    await asyncio.sleep(0.5)  # rate limit
+                posts = await _fetch_subreddit(session, sub, REDDIT_BASE)
+                all_posts.extend(posts)
     except Exception:
         pass
 
